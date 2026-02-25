@@ -1,0 +1,126 @@
+from pathlib import Path
+import pandas as pd
+from bs4 import BeautifulSoup
+import numpy as np
+
+def kp_html_import(season):
+    project_root = Path(__file__).resolve().parents[2]
+    file_path = project_root / "data/march_madness/kp_html.csv"
+    kp_html = pd.read_csv(file_path)
+
+    raw_string = (
+        kp_html
+        .query("Season == @season")
+    )["HTML"].tolist()
+
+    raw_table = BeautifulSoup(raw_string[0], "html.parser")
+
+    return(raw_table)
+
+
+def kp_clean(kp_html, season, kaggle_spelling_df):
+    raw_table = kp_html
+    rows = raw_table.find_all("tr")
+
+    headers = []
+    for row in rows[:]:
+        cells = row.find_all(["th"])
+        headers.append([cell.get_text(strip = True) for cell in cells])
+    headers = headers[1]
+    headers = headers[0:headers.index("Luck") + 1] + ["SOSNetRtg", "SOSORtg", "SOSDRtg", "NCSOSNetRtg"]
+
+    data = []
+    for row in rows[:]:
+        cells = row.find_all(["td"])
+        data.append([cell.get_text(strip = True) for cell in cells])
+    data = list(filter(None, data))
+
+    kp_finalized = [[headers[i] for i in [1] + list(range(4, 13))]]
+    for i in data[:]:
+        kp_finalized.append([i[j] for j in [1, 4, 5, 7, 9, 11, 13, 15, 17, 19]])
+
+    kenpom_df = pd.DataFrame(kp_finalized[1:], columns = kp_finalized[0])
+
+    kenpom_df["Team"] = kenpom_df["Team"].str.replace(r"\d+", "", regex = True)
+    kenpom_df = (
+        kenpom_df
+        .assign(Team = lambda x: x["Team"].str.replace(r"\d+", "", regex = True))
+        .assign(Team = lambda x: x["Team"].str.replace("\\*", "", regex = True))
+    )
+
+    kenpom_df = (
+        kenpom_df
+            .assign(
+                **{
+                    i: lambda x, col = i: pd.to_numeric(
+                        x[col].str.replace("\\+", "", regex = True
+                    ))
+                    for i in kenpom_df.columns[1:]
+                }
+            )
+        )
+
+    kenpom_df = (
+        kenpom_df
+        .assign(Team = lambda x: x["Team"].str.lower())
+        .merge(
+            kaggle_spelling_df,
+            how = "left",
+            left_on = "Team",
+            right_on = "TeamNameSpelling"
+        )
+        .assign(TeamID = lambda x: np.where(
+            x["Team"] == "texas a&m corpus chris", 1394, np.where(
+                x["Team"] == "illinois chicago", 1227, np.where(
+                    x["Team"] == "southeast missouri", 1369, np.where(
+                        x["Team"] == "queens", 1474, np.where(
+                            x["Team"] == "ut rio grande valley", 1410, np.where(
+                                x["Team"] == "cal st. bakersfield", 1167, np.where(
+                                    x["Team"] == "bethune cookman", 1126, np.where(
+                                        x["Team"] == "tarleton st.", 1470, np.where(
+                                            x["Team"] == "tennessee martin", 1404, np.where(
+                                                x["Team"] == "saint francis", 1384, np.where(
+                                                    x["Team"] == "louisiana monroe", 1419, np.where(
+                                                        x["Team"] == "arkansas pine bluff", 1115, np.where(
+                                                            x["Team"] == "mississippi valley st.", 1290, np.where(
+                                                                x["Team"] == "arkansas little rock", 1114, np.where(
+                                                                    x["Team"] == "louisiana lafayette", 1418, np.where(
+                                                                        x["Team"] == "southwest missouri st.", 1283, np.where(
+                                                                            x["Team"] == "texas pan american", 1410, np.where(
+                                                                                x["Team"] == "southwest texas st.", 1402, np.where(
+                                                                                    x["Team"] == "st. francis ny", 1383, np.where(
+                                                                                        x["Team"] == "southeast missouri st.", 1369, np.where(
+                                                                                            x["Team"] == "st. francis pa", 1384, np.where(
+                                                                                                x["Team"] == "winston salem st.", 1445, np.where(
+                                                                                                    x["Team"] == "dixie st.", 1469, np.where(
+                                                                                                        x["Team"] == "texas a&m commerce", 1477, x["TeamID"]
+                                                                                                    )
+                                                                                                )
+                                                                                            )
+                                                                                        )
+                                                                                    )
+                                                                                )
+                                                                            )
+                                                                        )
+                                                                    )
+                                                                )
+                                                            )
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        ))
+        .assign(TeamID = lambda x: x["TeamID"].astype("int"))
+        .drop(columns = ["Team", "TeamNameSpelling"])
+        .assign(Season = season)
+    )
+
+    return(kenpom_df)
