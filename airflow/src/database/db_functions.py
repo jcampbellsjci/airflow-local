@@ -1,12 +1,8 @@
 from pathlib import Path
-from airflow.providers.postgres.hooks.postgres import PostgresHook
+import pandas as pd
 
-def fetch_data(is_file = True, sql_filename = None, sql_text = None):
-    # Making connection to db via airflow connection
-    hook = PostgresHook(postgres_conn_id = "my_postgres")
-
+def fetch_data(engine, is_file = True, sql_filename = None, sql_text = None):
     if is_file:
-        # Injecting sql file text
         project_root = Path(__file__).resolve().parents[2]
         sql_path = project_root / "sql" / sql_filename
         sql = sql_path.read_text()
@@ -14,4 +10,4 @@ def fetch_data(is_file = True, sql_filename = None, sql_text = None):
     else:
         sql = sql_text
 
-    return hook.get_pandas_df(sql)
+    return pd.read_sql(con = engine, sql = sql)

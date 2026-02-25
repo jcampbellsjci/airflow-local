@@ -1,6 +1,7 @@
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
 from datetime import datetime
+from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 import sys
 import os
@@ -14,10 +15,14 @@ dag = DAG(
     catchup = False
 )
 
+hook = PostgresHook(postgres_conn_id = "my_postgres")
+engine = hook.get_sqlalchemy_engine()
+
 task_a = PythonOperator(
     task_id = "data_prep",
     python_callable = data_prep.data_prep,
     op_kwargs={
+        "engine": engine,
         "season": 2025
     },
     dag = dag

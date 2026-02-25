@@ -3,13 +3,9 @@ from bs4 import BeautifulSoup
 import numpy as np
 from src.database import db_functions
 from pathlib import Path
-from airflow.providers.postgres.hooks.postgres import PostgresHook
 
-def data_prep(season):
-    hook = PostgresHook(postgres_conn_id = "my_postgres")
-    engine = hook.get_sqlalchemy_engine()
-
-    raw_data = fetch_kaggle_tables()
+def data_prep(engine, season):
+    raw_data = fetch_kaggle_tables(engine = engine)
 
     raw_game_log = game_to_long(df = raw_data['MRegularSeasonDetailedResults'])
 
@@ -38,12 +34,16 @@ def data_prep(season):
     print("Success")
 
 
-def fetch_kaggle_tables(kaggle_tables = ['MNCAATourneyDetailedResults', 'MNCAATourneySeeds', 'MRegularSeasonDetailedResults', 'MTeamSpellings', 'MTeams']):
+def fetch_kaggle_tables(engine, kaggle_tables = ['MNCAATourneyDetailedResults', 'MNCAATourneySeeds', 'MRegularSeasonDetailedResults', 'MTeamSpellings', 'MTeams']):
     raw_data = {}
     data_table_names = sorted(kaggle_tables)
     
     for i in data_table_names:
-        df = db_functions.fetch_data(is_file = False, sql_text = "select * from march_madness." + i.lower())
+        df = db_functions.fetch_data(
+            engine = engine,
+            is_file = False,
+            sql_text = "select * from march_madness." + i.lower()
+        )
         raw_data[i] = df
 
     print("Created dictionary of following tables: " + ", ".join(list(raw_data.keys())))
