@@ -16,7 +16,7 @@ dag = DAG(
 
 task_a = PythonOperator(
     task_id = "data_prep",
-    python_callable = data_prep.dpz,
+    python_callable = data_prep.data_prep,
     op_kwargs={
         "season": 2025
     },

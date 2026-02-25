@@ -5,6 +5,39 @@ from src.database import db_functions
 from pathlib import Path
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
+def data_prep(season):
+    hook = PostgresHook(postgres_conn_id = "my_postgres")
+    engine = hook.get_sqlalchemy_engine()
+
+    raw_data = fetch_kaggle_tables()
+
+    raw_game_log = game_to_long(df = raw_data['MRegularSeasonDetailedResults'])
+
+    team_records = calculate_records(df = raw_game_log)
+    stat_avg = season_stat_summary(df = raw_game_log)
+
+    kp_html = kp_html_import(season = season)
+    kenpom_df = kp_clean(
+        kp_html = kp_html,
+        season = season,
+        kaggle_spelling_df = raw_data['MTeamSpellings']
+    )
+
+    tourney_seeds_clean = clean_tournament_seeds(seed_df = raw_data['MNCAATourneySeeds'])
+
+    final_df = tourney_game_raw(
+        tourney_game_df = raw_data['MNCAATourneyDetailedResults'],
+        stat_df = stat_avg,
+        seed_df = tourney_seeds_clean,
+        teams_df = raw_data['MTeams'],
+        engine = engine
+    )
+
+    final_df_diff = tourney_game_diff(df = final_df, engine = engine)
+
+    print("Success")
+
+
 def fetch_kaggle_tables(kaggle_tables = ['MNCAATourneyDetailedResults', 'MNCAATourneySeeds', 'MRegularSeasonDetailedResults', 'MTeamSpellings', 'MTeams']):
     raw_data = {}
     data_table_names = sorted(kaggle_tables)
@@ -420,38 +453,3 @@ def tourney_game_diff(df, engine):
     )
 
     return(final_diff_df)
-
-
-
-
-def dpz(season):
-    hook = PostgresHook(postgres_conn_id = "my_postgres")
-    engine = hook.get_sqlalchemy_engine()
-
-    raw_data = fetch_kaggle_tables()
-
-    raw_game_log = game_to_long(df = raw_data['MRegularSeasonDetailedResults'])
-
-    team_records = calculate_records(df = raw_game_log)
-    stat_avg = season_stat_summary(df = raw_game_log)
-
-    kp_html = kp_html_import(season = season)
-    kenpom_df = kp_clean(
-        kp_html = kp_html,
-        season = season,
-        kaggle_spelling_df = raw_data['MTeamSpellings']
-    )
-
-    tourney_seeds_clean = clean_tournament_seeds(seed_df = raw_data['MNCAATourneySeeds'])
-
-    final_df = tourney_game_raw(
-        tourney_game_df = raw_data['MNCAATourneyDetailedResults'],
-        stat_df = stat_avg,
-        seed_df = tourney_seeds_clean,
-        teams_df = raw_data['MTeams'],
-        engine = engine
-    )
-
-    final_df_diff = tourney_game_diff(df = final_df, engine = engine)
-
-    print("Success")
