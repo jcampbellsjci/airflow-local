@@ -3,7 +3,18 @@ import pandas as pd
 from bs4 import BeautifulSoup
 import numpy as np
 
-def kp_html_import(season):
+
+def kenpom_data_prep(season, spelling_df):
+    kenpom_html = kenpom_html_import(season = season)
+
+    kenpom_df = kenpom_clean(html = kenpom_html)
+
+    kenpom_df = kenpom_speller(input_df = kenpom_df, spelling_df = spelling_df)
+
+    return(kenpom_df)
+
+
+def kenpom_html_import(season):
     project_root = Path(__file__).resolve().parents[2]
     file_path = project_root / "data/march_madness/kp_html.csv"
     kp_html = pd.read_csv(file_path)
@@ -18,8 +29,8 @@ def kp_html_import(season):
     return(raw_table)
 
 
-def kp_clean(kp_html, season, kaggle_spelling_df):
-    raw_table = kp_html
+def kenpom_clean(html):
+    raw_table = html
     rows = raw_table.find_all("tr")
 
     headers = []
@@ -60,11 +71,15 @@ def kp_clean(kp_html, season, kaggle_spelling_df):
             )
         )
 
+    return(kenpom_df)
+
+
+def kenpom_speller(input_df, spelling_df):
     kenpom_df = (
-        kenpom_df
+        input_df
         .assign(Team = lambda x: x["Team"].str.lower())
         .merge(
-            kaggle_spelling_df,
+            spelling_df,
             how = "left",
             left_on = "Team",
             right_on = "TeamNameSpelling"
@@ -120,7 +135,6 @@ def kp_clean(kp_html, season, kaggle_spelling_df):
         ))
         .assign(TeamID = lambda x: x["TeamID"].astype("int"))
         .drop(columns = ["Team", "TeamNameSpelling"])
-        .assign(Season = season)
     )
 
     return(kenpom_df)

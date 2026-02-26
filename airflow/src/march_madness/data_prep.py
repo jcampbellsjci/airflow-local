@@ -1,9 +1,8 @@
 import pandas as pd
-from bs4 import BeautifulSoup
 import numpy as np
 from src.database import db_functions
 from src.march_madness import kenpom_data_prep 
-from pathlib import Path
+
 
 def data_prep(engine, season):
     raw_data = fetch_kaggle_tables(engine = engine)
@@ -13,11 +12,9 @@ def data_prep(engine, season):
     team_records = calculate_records(df = raw_game_log)
     stat_avg = season_stat_summary(df = raw_game_log)
 
-    kp_html = kenpom_data_prep.kp_html_import(season = season)
-    kenpom_df = kenpom_data_prep.kp_clean(
-        kp_html = kp_html,
+    kenpom_df = kenpom_data_prep.kenpom_data_prep(
         season = season,
-        kaggle_spelling_df = raw_data['MTeamSpellings']
+        spelling_df = raw_data['MTeamSpellings']
     )
 
     tourney_seeds_clean = clean_tournament_seeds(seed_df = raw_data['MNCAATourneySeeds'])
