@@ -1,6 +1,16 @@
 import pandas as pd
 
-def calculate_records(df):
+def calculate_records(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Takes game logs and calculates team records for a given season.
+
+    Args:
+        df(pd.DataFrame): Data frame of game logs with scores.
+    
+    Returns:
+        pd.DataFrame: Data frame that contains for a given team - season games played, wins, losses, and win percentage.
+    """
+
     team_records = (
         df
         .assign(
@@ -20,7 +30,17 @@ def calculate_records(df):
     return(team_records)
 
 
-def season_stat_summary(df):
+def season_stat_summary(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Takes game log and calculates season statistical summaries.
+
+    Args:
+        df (pd.DataFrame): Data frame of game logs.
+
+    Returns:
+        pd.DataFrame: Data frame of statistical summaries for a given team - season.
+    """
+    
     stat_fields = [
         i for i in df.columns if
         (i.startswith("Team1") or i.startswith("Team2"))
