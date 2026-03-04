@@ -58,7 +58,7 @@ def game_sampler(df: pd.DataFrame) -> pd.DataFrame:
     return(raw_tourney_game_log)
 
 
-def tourney_joiner(tourney_game_df: pd.DataFrame, seed_df: pd.DataFrame, record_df: pd.DataFrame, stat_df: pd.DataFrame) -> pd.DataFrame:
+def tourney_joiner(tourney_game_df: pd.DataFrame, seed_df: pd.DataFrame, record_df: pd.DataFrame, stat_df: pd.DataFrame, kenpom_df: pd.DataFrame) -> pd.DataFrame:
     """
     Takes data frame of tourney games and joins seeds, season records and statistical summaries for each team.
 
@@ -67,6 +67,7 @@ def tourney_joiner(tourney_game_df: pd.DataFrame, seed_df: pd.DataFrame, record_
         seed_df (pd.DataFrame): Data frame of tournament seeds.
         record_df (pd.DataFrame): Data frame of season records.
         stat_df (pd.DataFrame): Data frame of season statistical summaries.
+        kenpom_df (pd.DataFrame): Data frame of kenpom data.
 
     Returns:
         Data frame of tournament games complete with seeds, records and statistics.
@@ -96,6 +97,35 @@ def tourney_joiner(tourney_game_df: pd.DataFrame, seed_df: pd.DataFrame, record_
     final_df = (
         final_df
         .merge(
+            record_df,
+            on = ["Season", "Team1TeamID"],
+            how = "left"
+        )
+        .rename(columns = {
+            "GamesPlayed": "Team1GamesPlayed",
+            "Wins": "Team1Wins",
+            "Losses": "Team1Losses",
+            "WinRatio": "Team1WinRatio"
+        })
+        .merge(
+            record_df,
+            left_on = ["Season", "Team2TeamID"],
+            right_on = ["Season", "Team1TeamID"],
+            how = "left"
+        )
+        .drop(columns = "Team1TeamID_y")
+        .rename(columns = {
+            "Team1TeamID_x": "Team1TeamID",
+            "GamesPlayed": "Team2GamesPlayed",
+            "Wins": "Team2Wins",
+            "Losses": "Team2Losses",
+            "WinRatio": "Team2WinRatio"
+        })
+    )
+
+    final_df = (
+        final_df
+        .merge(
             stat_df,
             on = ["Season", "Team1TeamID"],
             how = "left"
@@ -103,7 +133,7 @@ def tourney_joiner(tourney_game_df: pd.DataFrame, seed_df: pd.DataFrame, record_
     )
     final_df.columns = [
         i.replace("Team1", "TeamA") if i.startswith("Team1")
-        else i.replace("Team2", "TeamB") if i == ("Team2TeamID") or i == ("Team2Seed")
+        else i.replace("Team2", "TeamB") if i in ["Team2TeamID", "Team2Seed", "Team2GamesPlayed", "Team2Wins", "Team2Losses", "Team2WinRatio"]
         else i.replace("Team2", "TeamAOpp") if i.startswith("Team2")
         else i
         for i in final_df.columns
@@ -124,6 +154,30 @@ def tourney_joiner(tourney_game_df: pd.DataFrame, seed_df: pd.DataFrame, record_
         else i.replace("Team2", "TeamBOpp") if i.startswith("Team2")
         else i
         for i in final_df.columns
+    ]
+
+    final_df = (
+        final_df
+        .merge(
+            kenpom_df,
+            how = "left",
+            left_on = ["Season", "TeamATeamID"],
+            right_on = ["Season", "TeamID"]
+        )
+        .drop(columns = "TeamID")
+        .merge(
+            kenpom_df,
+            how = "left",
+            left_on = ["Season", "TeamBTeamID"],
+            right_on = ["Season", "TeamID"]
+        )
+        .drop(columns = "TeamID")
+    )
+    final_df.columns = [
+    "TeamA" + i.replace("_x", "") if i.endswith("_x")
+    else "TeamB" + i.replace("_y", "") if i.endswith("_y")
+    else i
+    for i in final_df.columns
     ]
 
     return(final_df)
@@ -206,7 +260,7 @@ def tourney_diff_df_writer(df: pd.DataFrame, engine: Engine) -> pd.DataFrame:
         df
         .melt(
             id_vars = "GameID",
-            value_vars = ["TeamASeed"] + list(df.loc[:, "TeamAScore":"TeamAOppFTP"].columns),
+            value_vars = ["TeamASeed"] + list(df.loc[:, "TeamAGamesPlayed":"TeamAWinRatio"].columns) + list(df.loc[:, "TeamAScore":"TeamAOppFTP"].columns) + list(df.loc[:, "TeamANetRtg":"TeamANCSOSNetRtg"].columns),
             var_name = "Variable",
             value_name = "AValue"
         )
@@ -217,7 +271,7 @@ def tourney_diff_df_writer(df: pd.DataFrame, engine: Engine) -> pd.DataFrame:
         df
         .melt(
             id_vars = "GameID",
-            value_vars = ["TeamBSeed"] + list(df.loc[:, "TeamBScore":"TeamBOppFTP"].columns),
+            value_vars = ["TeamBSeed"] + list(df.loc[:, "TeamBGamesPlayed":"TeamBWinRatio"].columns) + list(df.loc[:, "TeamBScore":"TeamBOppFTP"].columns) + list(df.loc[:, "TeamBNetRtg":"TeamBNCSOSNetRtg"].columns),
             var_name = "Variable",
             value_name = "BValue"
         )

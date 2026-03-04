@@ -19,7 +19,8 @@ def data_prep(engine, season):
         tourney_game_df = raw_data['MNCAATourneyDetailedResults'],
         seed_df = tourney_seeds_clean,
         record_df = team_records,
-        stat_df = stat_avg
+        stat_df = stat_avg,
+        kenpom_df = kenpom_df
     )
 
     final_df = tournament.tourney_df_writer(
