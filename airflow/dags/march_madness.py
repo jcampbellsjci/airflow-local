@@ -22,8 +22,7 @@ task_a = PythonOperator(
     task_id = "data_prep",
     python_callable = data_prep.data_prep,
     op_kwargs={
-        "engine": engine,
-        "season_iterable": range(2002, 2026, 1)
+        "engine": engine
     },
     dag = dag
 )

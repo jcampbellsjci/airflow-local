@@ -4,7 +4,18 @@ from bs4 import BeautifulSoup
 import numpy as np
 
 
-def kenpom_data_prep(season, spelling_df):
+def kenpom_data_prep(season: int, spelling_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Takes raw HTML from kenpom website, cleans and formats it into a table, and then fixes spelling of teams to align with kaggle datasets. Returns a clean data frame.
+
+    Args:
+        season(int): NCAA season we're getting kenpom data for.
+        spelling_df(pd.DataFrame): Kaggle dataset of team spellings.
+
+    Returns:
+        pd.DataFrame: Clean dataframe of kenpom data for a given season with kaggle spellings.
+    """
+    
     kenpom_html = kenpom_html_import(season = season)
 
     kenpom_df = kenpom_clean(html = kenpom_html)
@@ -14,7 +25,17 @@ def kenpom_data_prep(season, spelling_df):
     return(kenpom_df)
 
 
-def kenpom_html_import(season):
+def kenpom_html_import(season: int) -> BeautifulSoup:
+    """
+    Imports kenpom site HTML for a given season as a beautiful soup object.
+
+    Args:
+        season(int): NCAA season we're getting kenpom data for.
+
+    Returns:
+        BeautifulSoup: Beautiful soup object for given season.
+    """
+    
     project_root = Path(__file__).resolve().parents[2]
     file_path = project_root / "data/march_madness/kp_html.csv"
     kp_html = pd.read_csv(file_path)
@@ -29,7 +50,17 @@ def kenpom_html_import(season):
     return(raw_table)
 
 
-def kenpom_clean(html):
+def kenpom_clean(html: BeautifulSoup) -> pd.DataFrame:
+    """
+    Takes raw beautiful soup object and transforms it into a clean pandas dataframe.
+
+    Args:
+        html(BeautifulSoup): Beautiful soup object containing raw kenpom html.
+
+    Returns:
+        pd.DataFrame: Clean version of kenpom table, ready for analysis.
+    """
+
     raw_table = html
     rows = raw_table.find_all("tr")
 
@@ -74,7 +105,18 @@ def kenpom_clean(html):
     return(kenpom_df)
 
 
-def kenpom_speller(input_df, spelling_df):
+def kenpom_speller(input_df: pd.DataFrame, spelling_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Takes kenpom data and applies kaggle team names, allowing for easy joins to kaggle data.
+
+    Args:
+        input_df(pd.DataFrame): Cleaned kenpom data frame.
+        spelling_df(pd.DataFrame): Team spelling data frame from kaggle.
+
+    Returns:
+        pd.DataFrame: Cleaned kenpom data frame with team spellings aligning to kaggle data.
+    """
+
     kenpom_df = (
         input_df
         .assign(Team = lambda x: x["Team"].str.lower())
