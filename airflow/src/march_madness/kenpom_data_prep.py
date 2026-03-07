@@ -2,6 +2,9 @@ from pathlib import Path
 import pandas as pd
 from bs4 import BeautifulSoup
 import numpy as np
+from airflow.utils.log.logging_mixin import LoggingMixin
+
+log = LoggingMixin().log
 
 
 def kenpom_data_prep(season: int, spelling_df: pd.DataFrame) -> pd.DataFrame:
@@ -176,7 +179,15 @@ def kenpom_speller(input_df: pd.DataFrame, spelling_df: pd.DataFrame) -> pd.Data
             )
         ))
         .assign(TeamID = lambda x: x["TeamID"].astype("int"))
-        .drop(columns = ["Team", "TeamNameSpelling"])
     )
+
+    if len(kenpom_df.query("TeamID.isna()")["TeamID"]) > 0:
+        log.error(f"Missing team ID's for following kenpom teams: {kenpom_df.query("TeamID.isna()")["TeamNameSpelling"]}")
+        kenpom_df = None
+    else:
+        kenpom_df = (
+            kenpom_df
+            .drop(columns = ["Team", "TeamNameSpelling"])
+        )
 
     return(kenpom_df)
